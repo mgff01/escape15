@@ -1,0 +1,30 @@
+{
+  "name": "enigma-das-marcas",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Jogo do IBMEC Day: as cores lidas pelo Kroma destravam a paleta que colore os logos.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "mock": "node src/server.js --mock",
+    "test": "node --test"
+  },
+  "keywords": [
+    "ibmec",
+    "kroma",
+    "serialport",
+    "socket.io"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@serialport/parser-readline": "^13.0.0",
+    "express": "^5.1.0",
+    "serialport": "^13.0.0",
+    "socket.io": "^4.8.1"
+  }
+}

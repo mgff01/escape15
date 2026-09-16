@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Enigma das Marcas: leia cores com o Kroma e descubra a frase escondida nos logos." />
+    <meta name="theme-color" content="#0d1117" />
+    <title>Enigma das Marcas</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "light");
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Permanent+Marker&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='13' fill='%23ff4d6d'/><circle cx='16' cy='16' r='6' fill='%2300d4ff'/></svg>" />
+  </head>
+  <body>
+    <a class="skip-link" href="#area-logo">Pular para o enigma</a>
+
+    <!--
+      Filtro que deforma levemente as linhas das bordas. E o que faz o traco
+      parecer desenhado a mao em vez de tracado pelo navegador. Aplicado so em
+      pseudo-elementos decorativos, nunca sobre texto.
+    -->
+    <svg class="sketch-defs" aria-hidden="true" focusable="false">
+      <filter id="traco-rabiscado">
+        <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed="7" result="ruido" />
+        <feDisplacementMap in="SourceGraphic" in2="ruido" scale="3.2" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <div class="app">
+      <header class="topbar">
+        <div class="topbar__identity">
+          <h1 class="topbar__title">Enigma das Marcas</h1>
+          <p class="topbar__subtitle">Leia uma cor no <strong>Kroma</strong> para destravá-la</p>
+        </div>
+
+        <div class="topbar__meters">
+          <div class="meter" title="Enigma atual">
+            <span class="meter__label">Enigma</span>
+            <span class="meter__value" id="puzzle-counter">1/5</span>
+          </div>
+          <div class="meter" title="Tentativas restantes">
+            <span class="meter__label">Vidas</span>
+            <span class="meter__value lives" id="lives-counter" aria-live="polite"></span>
+          </div>
+          <button id="theme-toggle" class="icon-button" type="button" aria-pressed="false">
+            <span aria-hidden="true" id="theme-toggle-icon">
+              <svg class="theme-icon" viewBox="0 0 24 24" focusable="false">
+                <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11Z" />
+              </svg>
+            </span>
+            <span class="sr-only">Alternar modo claro/escuro</span>
+          </button>
+          <button id="hint-button" class="icon-button" type="button" aria-haspopup="dialog">
+            <span aria-hidden="true">?</span>
+            <span class="sr-only">Ver a dica</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="progress" role="presentation">
+        <div class="progress__bar" id="progress-bar"></div>
+      </div>
+
+      <main class="board">
+        <aside class="palette" aria-labelledby="palette-title">
+          <h2 class="palette__title" id="palette-title">Cores</h2>
+          <ul class="palette__list" id="color-palette"></ul>
+          <p class="palette__hint">
+            Clique numa cor para selecioná-la e clique de novo para aplicá-la no logo.
+          </p>
+        </aside>
+
+        <section class="stage" id="area-logo" aria-labelledby="brand-name">
+          <div
+            class="dropzone"
+            id="logo-container"
+            role="button"
+            tabindex="0"
+            aria-describedby="dropzone-help"
+          >
+            <div class="dropzone__placeholder">Carregando…</div>
+          </div>
+          <p id="dropzone-help" class="sr-only">
+            Selecione uma cor na lista e clique aqui (ou nela de novo) para aplicá-la a este logo.
+          </p>
+
+          <p class="stage__brand" id="brand-name"></p>
+          <ul class="chips" id="applied-colors-container" aria-label="Cores já aplicadas"></ul>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <h2 class="footer__title">Palavras encontradas</h2>
+        <p class="footer__words" id="revealed-words" aria-live="polite">—</p>
+      </footer>
+    </div>
+
+    <div class="status-dot" id="connection-badge" title="Conexão com o Kroma">
+      <span class="status-dot__light" data-state="connecting"></span>
+      <span class="status-dot__text" id="connection-text">Conectando…</span>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="modal" id="hint-modal" aria-labelledby="hint-title">
+      <h2 class="modal__title" id="hint-title">Dica</h2>
+      <div class="modal__body" id="hint-text"></div>
+      <form method="dialog">
+        <button class="button" type="submit">Entendi</button>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="game-over-modal" aria-labelledby="game-over-title">
+      <h2 class="modal__title" id="game-over-title">Fim de jogo</h2>
+      <p class="modal__body">As tentativas acabaram. A frase continua escondida.</p>
+      <button class="button" type="button" id="restart-button">Tentar de novo</button>
+    </dialog>
+
+    <dialog class="modal modal--win" id="victory-modal" aria-labelledby="victory-title">
+      <h2 class="modal__title" id="victory-title">Enigma resolvido!</h2>
+      <p class="modal__body">A frase completa era:</p>
+      <blockquote class="modal__quote" id="victory-phrase"></blockquote>
+      <button class="button" type="button" id="play-again-button">Jogar de novo</button>
+    </dialog>
+
+    <section class="devpanel" id="devpanel" hidden aria-label="Painel do apresentador">
+      <header class="devpanel__header">
+        <strong>Painel do apresentador</strong>
+        <button class="devpanel__close" type="button" id="devpanel-close" aria-label="Fechar painel">
+          ×
+        </button>
+      </header>
+      <dl class="devpanel__facts">
+        <dt>Conexão</dt>
+        <dd id="dev-connection">—</dd>
+        <dt>Última leitura</dt>
+        <dd id="dev-last-color">—</dd>
+      </dl>
+      <p class="devpanel__note">Se o sensor falhar, destrave as cores manualmente:</p>
+      <div class="devpanel__buttons" id="devpanel-buttons"></div>
+    </section>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="js/main.mjs"></script>
+  </body>
+</html>
